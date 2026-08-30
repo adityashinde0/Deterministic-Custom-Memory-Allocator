@@ -1,0 +1,21 @@
+# Build artifacts and binaries
+bin/
+obj/
+*.exe
+*.o
+*.obj
+*.out
+*.dll
+*.so
+*.dylib
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+.DS_Store
