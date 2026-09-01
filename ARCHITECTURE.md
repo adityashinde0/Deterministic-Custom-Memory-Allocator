@@ -50,3 +50,10 @@ Auth: Not required for MVP.
 - Variable-byte-granularity allocation and a full standards-compatible malloc() replacement are out of scope; the MVP uses the specified 1 KiB granularity.
 - Thread safety is deferred because it is not explicitly required; concurrency is not part of judging MVP scope.
 - Buddy allocation, advanced free-space indexes, and sophisticated visualization are deferred to avoid compromising the 12-hour correctness path.
+
+7. Embedded Workload Demonstration Layer
+- Realistic controller / gateway memory consumer simulation built on top of the public xmalloc()/xfree() allocator contract.
+- Models 5 realistic components: Sensor Buffer (12 KiB), Communication RX (32 KiB), Control Task (8 KiB), Event Buffer (6 KiB), and Temporary Processing Buffer (20 KiB).
+- Includes a deterministic Memory Pressure Indicator (LOW, MODERATE, HIGH, CRITICAL) derived from live pool occupancy, largest contiguous free capacity, and allocation failure counters.
+- Demonstrates reproducible lifecycle phases: startup, transient operation, selective release/fragmentation, deterministic reuse, bidirectional coalescing, controlled pool exhaustion, and complete recovery.
+- Prototype simulation designed for hackathon demonstration; not a claim of safety certification or deployment in commercial flight hardware.

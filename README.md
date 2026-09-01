@@ -139,6 +139,24 @@ make cli        # Linux / macOS
 mingw32-make cli # Windows
 ```
 
+### Run Real-World Embedded System Simulation
+```bash
+make embedded-demo        # Linux / macOS
+# or
+mingw32-make embedded-demo # Windows
+```
+*Simulates a realistic resource-constrained Embedded Controller / Sensor Gateway managing Sensor, Communication RX, Control Task, Event, and Temporary Processing buffers through 10 deterministic lifecycle stages with live Memory Pressure telemetry.*
+
+> [!NOTE]
+> **Prototype Simulation**: This demonstration models realistic embedded workload patterns (sensor buffers, network packets, telemetry processing) to observe allocator dynamics under memory pressure. It is a technical prototype demonstration and not a claim of safety certification or deployment in commercial hardware.
+
+### Run Embedded Strategy Comparison
+```bash
+make embedded-comp        # Linux / macOS
+# or
+mingw32-make embedded-comp # Windows
+```
+
 ### Run Interactive Console
 ```bash
 ./bin/demo_runner --interactive    # Linux / macOS

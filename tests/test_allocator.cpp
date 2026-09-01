@@ -1,4 +1,5 @@
 #include "allocator.h"
+#include "embedded_simulator.h"
 #include <iostream>
 #include <cassert>
 #include <vector>
@@ -254,6 +255,23 @@ void test_strategy_advisor() {
     TEST_ASSERT(burst_report.best_fit_metrics.successful_allocations == 250, "Best-Fit satisfies all 250 burst requests");
 }
 
+void test_embedded_simulator() {
+    std::cout << "\n=== Running: test_embedded_simulator (Embedded Workload) ===\n";
+    EmbeddedWorkloadSimulator sim;
+    EmbeddedSimulationEvidence ev = sim.run_full_simulation(false);
+
+    TEST_ASSERT(ev.deterministic_workload_pass, "Embedded simulator runs deterministic workload");
+    TEST_ASSERT(ev.allocator_backed_buffers_pass, "Embedded components backed by custom pool");
+    TEST_ASSERT(ev.fragmentation_demonstrated_pass, "Fragmentation event successfully created");
+    TEST_ASSERT(ev.memory_reuse_demonstrated_pass, "Memory reuse detected and verified");
+    TEST_ASSERT(ev.coalescing_demonstrated_pass, "Bidirectional coalescing merges adjacent free regions");
+    TEST_ASSERT(ev.memory_pressure_detected_pass, "Memory pressure successfully classified");
+    TEST_ASSERT(ev.controlled_exhaustion_pass, "Controlled exhaustion safely returns nullptr");
+    TEST_ASSERT(ev.recovery_demonstrated_pass, "Full pool capacity restored upon teardown");
+    TEST_ASSERT(ev.final_free_kib == 2048, "Final free memory is full 2048 KiB");
+    TEST_ASSERT(ev.final_largest_free_kib == 2048, "Final largest free block is full 2048 KiB");
+}
+
 int main() {
     std::cout << "=======================================================\n";
     std::cout << "       RUNNING CUSTOM ALLOCATOR TEST SUITE             \n";
@@ -268,6 +286,7 @@ int main() {
     test_strategy_behavior();
     test_leak_detection();
     test_strategy_advisor();
+    test_embedded_simulator();
 
     std::cout << "\n=======================================================\n";
     std::cout << " TEST SUMMARY: " << g_pass_count << " PASSED, " << g_fail_count << " FAILED\n";
@@ -275,3 +294,4 @@ int main() {
 
     return (g_fail_count == 0) ? 0 : 1;
 }
+

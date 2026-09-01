@@ -1,4 +1,5 @@
 #include "allocator.h"
+#include "embedded_simulator.h"
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -245,11 +246,18 @@ void run_interactive_mode() {
             reset_pool();
             active_allocs.clear();
             std::cout << " [OK] Pool and handles reset.\n";
+        } else if (cmd == "embedded" || cmd == "sim") {
+            run_embedded_demo();
+            active_allocs.clear();
+        } else if (cmd == "comp") {
+            EmbeddedWorkloadSimulator sim;
+            sim.run_strategy_comparison();
+            active_allocs.clear();
         } else if (cmd == "demo") {
             run_deterministic_demo();
             active_allocs.clear();
         } else {
-            std::cout << " Unknown command: '" << cmd << "'. Type 'alloc', 'free', 'strategy', 'advisor', 'layout', 'stats', 'leaks', 'demo', or 'exit'.\n";
+            std::cout << " Unknown command: '" << cmd << "'. Type 'alloc', 'free', 'strategy', 'advisor', 'embedded', 'comp', 'layout', 'stats', 'leaks', 'demo', or 'exit'.\n";
         }
     }
 }
@@ -257,6 +265,8 @@ void run_interactive_mode() {
 void print_help(const char* prog_name) {
     std::cout << "Usage: " << prog_name << " [options]\n";
     std::cout << "Options:\n";
+    std::cout << "  --embedded, -e    Run the Embedded Controller / Sensor Gateway Simulator\n";
+    std::cout << "  --comp            Run Embedded Workload First-Fit vs Best-Fit Comparison\n";
     std::cout << "  --demo            Run the 10-step complete deterministic demo (default)\n";
     std::cout << "  --advisor, -a     Run the Deterministic Allocation Strategy Advisor\n";
     std::cout << "  --interactive, -i Start interactive CLI shell\n";
@@ -270,6 +280,13 @@ int main(int argc, char* argv[]) {
         std::string arg = argv[1];
         if (arg == "--interactive" || arg == "-i") {
             run_interactive_mode();
+            return 0;
+        } else if (arg == "--embedded" || arg == "-e") {
+            run_embedded_demo();
+            return 0;
+        } else if (arg == "--comp") {
+            EmbeddedWorkloadSimulator sim;
+            sim.run_strategy_comparison();
             return 0;
         } else if (arg == "--advisor" || arg == "-a") {
             initialize_pool();

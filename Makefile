@@ -1,8 +1,8 @@
 CXX ?= g++
 CXXFLAGS = -std=c++14 -O2 -Wall -Wextra -Iinclude
 
-SRCS = src/allocator.cpp src/strategy.cpp src/diagnostics.cpp
-OBJS = obj/allocator.o obj/strategy.o obj/diagnostics.o
+SRCS = src/allocator.cpp src/strategy.cpp src/diagnostics.cpp src/embedded_simulator.cpp
+OBJS = obj/allocator.o obj/strategy.o obj/diagnostics.o obj/embedded_simulator.o
 
 BIN_DIR = bin
 OBJ_DIR = obj
@@ -51,6 +51,12 @@ $(OBJ_DIR)/benchmark.o: benchmarks/benchmark.cpp
 cli: dirs $(TARGET_CLI)
 	$(TARGET_CLI)
 
+embedded-demo: dirs $(TARGET_CLI)
+	$(TARGET_CLI) --embedded
+
+embedded-comp: dirs $(TARGET_CLI)
+	$(TARGET_CLI) --comp
+
 test: dirs $(TARGET_TEST)
 	$(TARGET_TEST)
 
@@ -61,4 +67,4 @@ clean:
 	@$(call RMDIR,$(OBJ_DIR))
 	@$(call RMDIR,$(BIN_DIR))
 
-.PHONY: all dirs cli test bench clean
+.PHONY: all dirs cli embedded-demo embedded-comp test bench clean
