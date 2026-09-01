@@ -1,4 +1,5 @@
 1. System Flow
+```mermaid
 flowchart TD
     A[CLI / Test Harness] --> B[xmalloc / xfree]
     B --> C{Validate Request}
@@ -18,6 +19,7 @@ flowchart TD
 
     A --> O[Leak / Layout / Fragmentation Report]
     O --> P[Metadata + Pool State]
+```
 
 2. Data / Storage Design
 - Pool: fixed 2 MiB region, logically divided into 2048 contiguous 1 KiB units.
