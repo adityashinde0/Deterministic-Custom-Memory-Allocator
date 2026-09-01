@@ -1,6 +1,6 @@
 # C-002: Deterministic Custom Memory Allocator
 
-A high-performance, deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, a **Tier-2 Deterministic Allocation Strategy Advisor**, and an interactive/demonstration CLI harness.
+A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, a **Tier-2 Deterministic Allocation Strategy Advisor**, and an interactive/demonstration CLI harness.
 
 ---
 
@@ -14,7 +14,7 @@ A high-performance, deterministic C++ custom memory allocator managing a fixed *
   - **Best-Fit**: Evaluates candidate free blocks to find the closest matching block size, minimizing remaining fragment slack.
 - **Tier-2 WOW Feature: Deterministic Allocation Strategy Advisor**:
   - Runs identical deterministic workloads across First-Fit and Best-Fit strategies.
-  - Measures allocation throughput, search work (block evaluations), fragmentation ratios, internal slack waste, and reuse events.
+  - Measures allocation success rate, search work (block evaluations), fragmentation ratios, internal slack waste, and reuse events.
   - Outputs an evidence-based trade-off comparison and recommendation without heuristics or fake AI.
 - **Splitting & Coalescing**:
   - **Block Splitting**: Partitions excess units from oversized free blocks into new free descriptor records.
@@ -185,7 +185,7 @@ Internal slack waste    120583 B          121585 B
 Reuse events            118               121               
 ------------------------------------------------------------
 Observed result:
-Best-Fit achieved higher allocation throughput (362/400 vs 359/400) and lower external fragmentation (91.7% vs 95.7%).
+Best-Fit achieved a higher allocation success rate (362/400 vs 359/400) and lower external fragmentation (91.7% vs 95.7%).
 
 Trade-off:
 Best-Fit tightly matches free block sizes, minimizing residue fragmentation and preserving larger contiguous runs. However, Best-Fit evaluates all candidate blocks in the list (search work: 55608 steps vs 56027 steps for First-Fit). Recommendation: Use Best-Fit for memory-constrained heterogeneous workloads where allocation success rate is critical.

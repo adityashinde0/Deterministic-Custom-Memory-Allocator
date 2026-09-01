@@ -243,7 +243,7 @@ StrategyAdvisorReport run_strategy_advisor(const std::string& workload_type) {
     std::ostringstream trade;
 
     if (bf.successful_allocations > ff.successful_allocations) {
-        obs << "Best-Fit achieved higher allocation throughput (" 
+        obs << "Best-Fit achieved a higher allocation success rate (" 
             << bf.successful_allocations << "/" << report.total_requests << " vs " 
             << ff.successful_allocations << "/" << report.total_requests 
             << ") and lower external fragmentation (" 
@@ -255,7 +255,7 @@ StrategyAdvisorReport run_strategy_advisor(const std::string& workload_type) {
               << bf.search_work_steps << " steps vs " << ff.search_work_steps << " steps for First-Fit). "
               << "Recommendation: Use Best-Fit for memory-constrained heterogeneous workloads where allocation success rate is critical.";
     } else if (ff.successful_allocations > bf.successful_allocations) {
-        obs << "First-Fit achieved higher allocation throughput (" 
+        obs << "First-Fit achieved a higher allocation success rate (" 
             << ff.successful_allocations << " vs " << bf.successful_allocations << ").";
         trade << "First-Fit reduced search overhead (" << ff.search_work_steps << " steps vs " 
               << bf.search_work_steps << " steps).";

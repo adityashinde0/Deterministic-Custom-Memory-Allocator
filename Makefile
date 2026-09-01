@@ -18,8 +18,8 @@ else
 endif
 
 TARGET_CLI = $(BIN_DIR)/demo_runner$(EXE)
-TARGET_TEST = $(BIN_DIR)/test_runner$(EXE)
-TARGET_BENCH = $(BIN_DIR)/benchmark_runner$(EXE)
+TARGET_TEST = $(BIN_DIR)/run_tests$(EXE)
+TARGET_BENCH = $(BIN_DIR)/run_benchmarks$(EXE)
 
 all: dirs $(TARGET_CLI) $(TARGET_TEST) $(TARGET_BENCH)
 
