@@ -37,26 +37,26 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
 ## 🏗️ Architecture Overview
 
 ```mermaid
-graph TD
-    A["CLI / Application"] --> B["xmalloc() / xfree()"]
-    
-    subgraph Alloc_Path ["Allocation Flow (xmalloc)"]
-        B --> C{"Validate Request"}
-        C -->|"Invalid Size or > 2 MiB"| E["Return nullptr (Safe Failure)"]
-        C -->|"Valid Size"| D["Round Up to 1 KiB Units"]
-        D --> F["Selected Strategy: First-Fit / Best-Fit"]
-        F --> G{"Contiguous Free Run Found?"}
-        G -->|"No"| E
-        G -->|"Yes"| H["Split Remainder + Record Metadata"]
-        H --> I["Return Pool Pointer"]
+flowchart TD
+    CLI[CLI / Application] --> API[xmalloc / xfree API]
+
+    subgraph Allocation [Allocation Path]
+        API --> CheckReq{Validate Request}
+        CheckReq -->|Invalid Size| FailAlloc[Return nullptr]
+        CheckReq -->|Valid Size| RoundUnits[Round Up to 1 KiB Units]
+        RoundUnits --> Strat[Select Strategy: First-Fit / Best-Fit]
+        Strat --> FindBlock{Free Run Found?}
+        FindBlock -->|No| FailAlloc
+        FindBlock -->|Yes| SplitBlock[Split Remainder and Record Metadata]
+        SplitBlock --> RetPtr[Return Pool Pointer]
     end
 
-    subgraph Free_Path ["Deallocation Flow (xfree)"]
-        B --> J{"Validate Pointer"}
-        J -->|"Out-of-Bounds / Misaligned / Double-Free"| K["Reject & Preserve Allocator State"]
-        J -->|"Valid Head Pointer"| L["Mark Block FREE"]
-        L --> M["Coalesce Left & Right Adjacent Free Runs"]
-        M --> N["Update Statistics & Free Metrics"]
+    subgraph Deallocation [Deallocation Path]
+        API --> CheckPtr{Validate Pointer}
+        CheckPtr -->|Invalid Pointer / Double-Free| RejectFree[Reject and Preserve State]
+        CheckPtr -->|Valid Pointer| ReleaseBlock[Mark Block FREE]
+        ReleaseBlock --> CoalesceBlocks[Coalesce Left and Right Adjacent Free Runs]
+        CoalesceBlocks --> UpdateMetrics[Update Statistics and Free Metrics]
     end
 ```
 
