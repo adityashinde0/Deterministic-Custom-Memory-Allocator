@@ -38,25 +38,25 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
 
 ```mermaid
 flowchart TD
-    CLI[CLI / Application] --> API[xmalloc / xfree API]
+    CLI["CLI / Application"] --> API["xmalloc / xfree API"]
 
-    subgraph Allocation [Allocation Path]
-        API --> CheckReq{Validate Request}
-        CheckReq -->|Invalid Size| FailAlloc[Return nullptr]
-        CheckReq -->|Valid Size| RoundUnits[Round Up to 1 KiB Units]
-        RoundUnits --> Strat[Select Strategy: First-Fit / Best-Fit]
-        Strat --> FindBlock{Free Run Found?}
-        FindBlock -->|No| FailAlloc
-        FindBlock -->|Yes| SplitBlock[Split Remainder and Record Metadata]
-        SplitBlock --> RetPtr[Return Pool Pointer]
+    subgraph Allocation["Allocation Flow"]
+        API --> ValReq{"Is Request Valid?"}
+        ValReq -->|"Invalid Size"| AllocFail["Return nullptr"]
+        ValReq -->|"Valid Size"| Round["Round to 1 KiB Units"]
+        Round --> Strat["Select Strategy: First-Fit / Best-Fit"]
+        Strat --> FindFree{"Free Block Found?"}
+        FindFree -->|"No"| AllocFail
+        FindFree -->|"Yes"| Split["Split Remainder and Record Metadata"]
+        Split --> RetPtr["Return Pool Pointer"]
     end
 
-    subgraph Deallocation [Deallocation Path]
-        API --> CheckPtr{Validate Pointer}
-        CheckPtr -->|Invalid Pointer / Double-Free| RejectFree[Reject and Preserve State]
-        CheckPtr -->|Valid Pointer| ReleaseBlock[Mark Block FREE]
-        ReleaseBlock --> CoalesceBlocks[Coalesce Left and Right Adjacent Free Runs]
-        CoalesceBlocks --> UpdateMetrics[Update Statistics and Free Metrics]
+    subgraph Deallocation["Deallocation Flow"]
+        API --> ValPtr{"Is Pointer Valid?"}
+        ValPtr -->|"Invalid or Double Free"| FreeReject["Reject and Preserve State"]
+        ValPtr -->|"Valid Head Pointer"| Release["Mark Block FREE"]
+        Release --> Coalesce["Coalesce Adjacent Free Blocks"]
+        Coalesce --> Stats["Update Metrics and Free Statistics"]
     end
 ```
 
