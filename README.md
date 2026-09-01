@@ -26,7 +26,7 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
   - **Double-Free Rejection**: Safely identifies and rejects attempts to free already-freed or non-head pointers without corrupting state.
   - **Controlled Exhaustion**: Gracefully returns `nullptr` when no contiguous region satisfies the request.
 - **Comprehensive Diagnostics & Leak Detection**:
-  - Computes internal slack waste (bytes) and external fragmentation percentage.
+  - Computes internal slack waste (bytes) and external fragmentation indicator.
   - Generates live memory leak reports with block ID, requested vs reserved bytes, and address offsets.
   - ASCII visual memory bar representing real-time pool occupancy.
 - **Cross-Platform / Linux-Ready Build**: Dual-OS POSIX & Windows compliant Makefile.
@@ -37,30 +37,35 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
 ## 🏗️ Architecture Overview
 
 ```mermaid
-flowchart TD
-    A[CLI / Application] --> B[xmalloc / xfree]
-    B --> C{Validate Request}
-    C -->|Invalid Size / >2 MiB| E[Return nullptr]
-    C -->|Valid Size| D[Round up to 1 KiB Units]
-    D --> F[Selected Strategy: First-Fit / Best-Fit]
-    F --> G{Contiguous Free Run Found?}
-    G -->|No| E
-    G -->|Yes| H[Split Remainder + Record Descriptor]
-    H --> I[Return Pool Pointer]
+graph TD
+    A["CLI / Application"] --> B["xmalloc() / xfree()"]
+    
+    subgraph Alloc_Path ["Allocation Flow (xmalloc)"]
+        B --> C{"Validate Request"}
+        C -->|"Invalid Size or > 2 MiB"| E["Return nullptr (Safe Failure)"]
+        C -->|"Valid Size"| D["Round Up to 1 KiB Units"]
+        D --> F["Selected Strategy: First-Fit / Best-Fit"]
+        F --> G{"Contiguous Free Run Found?"}
+        G -->|"No"| E
+        G -->|"Yes"| H["Split Remainder + Record Metadata"]
+        H --> I["Return Pool Pointer"]
+    end
 
-    B --> J{Validate xfree Pointer}
-    J -->|Out-of-bounds / Unaligned / Double Free| K[Reject + Preserve Allocator State]
-    J -->|Valid Head Pointer| L[Mark Block FREE]
-    L --> M[Coalesce Adjacent Left & Right Free Runs]
-    M --> N[Update Statistics & Free Metrics]
+    subgraph Free_Path ["Deallocation Flow (xfree)"]
+        B --> J{"Validate Pointer"}
+        J -->|"Out-of-Bounds / Misaligned / Double-Free"| K["Reject & Preserve Allocator State"]
+        J -->|"Valid Head Pointer"| L["Mark Block FREE"]
+        L --> M["Coalesce Left & Right Adjacent Free Runs"]
+        M --> N["Update Statistics & Free Metrics"]
+    end
 ```
 
-### Memory Layout
+### Memory Layout & Formulas
 - **Pool Size**: 2,097,152 bytes (2 MiB).
 - **Unit Size**: 1,024 bytes (1 KiB).
 - **Total Units**: 2,048 units.
-- **Internal Fragmentation Metric**: $\sum (\text{Reserved Bytes} - \text{Requested Bytes})$ across active allocations.
-- **External Fragmentation Metric**: $1.0 - \left(\frac{\text{Largest Free Block Units}}{\text{Total Free Units}}\right)$ when free units $> 0$.
+- **Internal Slack Waste**: $\sum (\text{Reserved Bytes} - \text{Requested Bytes})$ across active allocations.
+- **External Fragmentation Indicator**: $1.0 - \left(\frac{\text{Largest Free Block Units}}{\text{Total Free Units}}\right)$ when total free units $> 0$, and $0.0$ otherwise.
 
 ---
 
@@ -99,14 +104,14 @@ PS-C-002/
 
 ### Build All Targets
 ```bash
-make all        # Linux
+make all        # Linux / macOS
 # or
 mingw32-make all # Windows
 ```
 
 ### Run Automated Unit Tests (55 Tests)
 ```bash
-make test        # Linux
+make test        # Linux / macOS
 # or
 mingw32-make test # Windows
 ```
@@ -114,7 +119,7 @@ mingw32-make test # Windows
 
 ### Run Strategy Comparison Benchmarks
 ```bash
-make bench        # Linux
+make bench        # Linux / macOS
 # or
 mingw32-make bench # Windows
 ```
@@ -122,21 +127,21 @@ mingw32-make bench # Windows
 
 ### Run Tier-2 Strategy Advisor Report
 ```bash
-./bin/demo_runner --advisor        # Linux
+./bin/demo_runner --advisor        # Linux / macOS
 # or
 bin\demo_runner.exe --advisor      # Windows
 ```
 
 ### Run Full 10-Step Deterministic Demo
 ```bash
-make cli        # Linux
+make cli        # Linux / macOS
 # or
 mingw32-make cli # Windows
 ```
 
 ### Run Interactive Console
 ```bash
-./bin/demo_runner --interactive    # Linux
+./bin/demo_runner --interactive    # Linux / macOS
 # or
 bin\demo_runner.exe --interactive  # Windows
 ```
