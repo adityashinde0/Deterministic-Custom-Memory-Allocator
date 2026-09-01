@@ -5,6 +5,7 @@
 #include "strategy.h"
 #include <vector>
 #include <memory>
+#include <string>
 
 namespace Allocator {
 
@@ -23,6 +24,10 @@ AllocatorStats get_allocator_stats();
 void dump_leaks();
 void dump_pool_layout();
 std::vector<LeakInfo> get_active_leaks();
+
+// Tier-2 Deterministic Allocation Strategy Advisor
+StrategyAdvisorReport run_strategy_advisor(const std::string& workload_type = "fragmented_churn");
+void print_strategy_advisor_report(const StrategyAdvisorReport& report);
 
 // Detailed Allocator Class implementation
 class CustomPoolAllocator {
@@ -52,7 +57,6 @@ public:
 private:
     void coalesce_at(size_t index);
     bool validate_pointer(void* ptr, size_t& block_index) const;
-    void update_largest_free_block();
 
     uint8_t* pool_memory_;
     bool initialized_;

@@ -1,6 +1,6 @@
 # C-002: Deterministic Custom Memory Allocator
 
-A high-performance, deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, and an interactive/demonstration CLI harness.
+A high-performance, deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, a **Tier-2 Deterministic Allocation Strategy Advisor**, and an interactive/demonstration CLI harness.
 
 ---
 
@@ -10,8 +10,12 @@ A high-performance, deterministic C++ custom memory allocator managing a fixed *
 - **External Metadata Architecture**: Descriptors are maintained externally, guaranteeing that 100% of the 2 MiB pool remains available for user payloads.
 - **1 KiB Allocation Granularity**: Incoming allocation byte requests are automatically rounded up to discrete 1 KiB unit boundaries.
 - **Configurable Search Strategies**:
-  - **First-Fit**: Scans from the beginning of the pool to find the first suitable contiguous block.
+  - **First-Fit**: Scans from the beginning of the pool to find the first suitable contiguous block (lowest search overhead).
   - **Best-Fit**: Evaluates candidate free blocks to find the closest matching block size, minimizing remaining fragment slack.
+- **Tier-2 WOW Feature: Deterministic Allocation Strategy Advisor**:
+  - Runs identical deterministic workloads across First-Fit and Best-Fit strategies.
+  - Measures allocation throughput, search work (block evaluations), fragmentation ratios, internal slack waste, and reuse events.
+  - Outputs an evidence-based trade-off comparison and recommendation without heuristics or fake AI.
 - **Splitting & Coalescing**:
   - **Block Splitting**: Partitions excess units from oversized free blocks into new free descriptor records.
   - **Bidirectional Coalescing**: Automatically merges adjacent free blocks (left and right) upon deallocation to eliminate external fragmentation.
@@ -25,7 +29,8 @@ A high-performance, deterministic C++ custom memory allocator managing a fixed *
   - Computes internal slack waste (bytes) and external fragmentation percentage.
   - Generates live memory leak reports with block ID, requested vs reserved bytes, and address offsets.
   - ASCII visual memory bar representing real-time pool occupancy.
-- **Automated Test Suite & Benchmarks**: 47 automated unit tests covering all edge cases, plus comparative benchmark runners.
+- **Cross-Platform / Linux-Ready Build**: Dual-OS POSIX & Windows compliant Makefile.
+- **Automated Test Suite & Benchmarks**: 55 automated unit tests covering all edge cases, plus comparative benchmark runners.
 
 ---
 
@@ -64,22 +69,22 @@ flowchart TD
 ```text
 PS-C-002/
 ├── include/
-│   ├── allocator.h          # Public API and CustomPoolAllocator class declaration
-│   ├── allocator_types.h    # Data structures, constants, stats, and leak definitions
+│   ├── allocator.h          # Public API, CustomPoolAllocator, and Advisor declarations
+│   ├── allocator_types.h    # Data structures, constants, stats, Advisor types, and leak definitions
 │   └── strategy.h           # IAllocationStrategy, FirstFitStrategy, and BestFitStrategy
 ├── src/
 │   ├── allocator.cpp        # Pool memory management, xmalloc/xfree, splitting, coalescing
 │   ├── strategy.cpp         # First-Fit and Best-Fit search implementations
-│   ├── diagnostics.cpp      # Layout mapping, stats computation, and leak reporting
-│   └── main.cpp             # CLI demo suite and interactive console
+│   ├── diagnostics.cpp      # Layout mapping, stats computation, leak reporting, and Strategy Advisor
+│   └── main.cpp             # 10-step sequential demo suite and interactive console
 ├── tests/
-│   └── test_allocator.cpp   # 47-test automated unit and regression suite
+│   └── test_allocator.cpp   # 55-test automated unit and regression suite
 ├── benchmarks/
 │   └── benchmark.cpp        # Reproducible First-Fit vs Best-Fit benchmark harness
 ├── ARCHITECTURE.md          # Technical baseline architecture specification
 ├── PRD.md                   # Product requirements document
 ├── PROGRESS.md              # Task execution tracking and decisions log
-├── Makefile                 # MinGW / GCC build definitions
+├── Makefile                 # Cross-platform (Linux & Windows) build definitions
 ├── .gitignore               # Git ignore rules
 └── README.md                # Project documentation
 ```
@@ -90,35 +95,50 @@ PS-C-002/
 
 ### Prerequisites
 - **C++ Compiler**: GCC / MinGW with C++14 support (`g++`).
-- **Make Tool**: `mingw32-make` (Windows) or `make` (Linux/macOS).
+- **Make Tool**: `make` (Linux/macOS) or `mingw32-make` (Windows).
 
 ### Build All Targets
 ```bash
-mingw32-make all
+make all        # Linux
+# or
+mingw32-make all # Windows
 ```
 
-### Run Automated Unit Tests
+### Run Automated Unit Tests (55 Tests)
 ```bash
-mingw32-make test
+make test        # Linux
+# or
+mingw32-make test # Windows
 ```
-*Executes all 47 unit test assertions covering initialization, unit rounding, splitting, coalescing, reuse, exhaustion, invalid pointer checks, double free detection, strategy variations, and leak reports.*
+*Executes all 55 unit test assertions covering initialization, unit rounding, splitting, coalescing, reuse, exhaustion, invalid pointer checks, double free detection, strategy variations, leak reports, and Tier-2 Strategy Advisor validation.*
 
 ### Run Strategy Comparison Benchmarks
 ```bash
-mingw32-make bench
+make bench        # Linux
+# or
+mingw32-make bench # Windows
 ```
 *Compares First-Fit vs Best-Fit across fragmented churn and burst allocation cycles, reporting execution time, allocation success rates, strategy search steps, and external fragmentation.*
 
-### Run CLI Automated Demo
+### Run Tier-2 Strategy Advisor Report
 ```bash
-mingw32-make cli
-# Or directly:
-bin/allocator_cli.exe --demo
+./bin/demo_runner --advisor        # Linux
+# or
+bin\demo_runner.exe --advisor      # Windows
+```
+
+### Run Full 10-Step Deterministic Demo
+```bash
+make cli        # Linux
+# or
+mingw32-make cli # Windows
 ```
 
 ### Run Interactive Console
 ```bash
-bin/allocator_cli.exe --interactive
+./bin/demo_runner --interactive    # Linux
+# or
+bin\demo_runner.exe --interactive  # Windows
 ```
 
 ---
@@ -132,31 +152,44 @@ When running in `--interactive` mode, the allocator provides an interactive comm
 | `alloc <bytes>` | Allocate `<bytes>` from the pool | `alloc 4096` |
 | `free <handle_id>` | Free an allocated block by its handle ID | `free 1` |
 | `strategy <ff\|bf>` | Switch active strategy (`ff` = First-Fit, `bf` = Best-Fit) | `strategy bf` |
+| `advisor [churn\|burst]` | Run Tier-2 Deterministic Strategy Advisor | `advisor churn` |
 | `layout` | Display visual ASCII layout map and block descriptors | `layout` |
 | `stats` | Print comprehensive allocator statistics | `stats` |
 | `leaks` | Run live memory leak detection report | `leaks` |
 | `list` | List all active tracked handles | `list` |
 | `reset` | Reset pool to clean initial state | `reset` |
-| `demo` | Run the automated 5-scenario demo | `demo` |
+| `demo` | Run the full 10-step automated demo | `demo` |
 | `exit` / `quit` | Exit the interactive console | `exit` |
 
 ---
 
-## 📊 Benchmark Summary
-
-Example benchmark output comparing strategies on synthetic workloads:
+## 📊 Strategy Advisor Output Example
 
 ```text
-========================================================================================================
-                                  BENCHMARK PERFORMANCE COMPARISON                                      
-========================================================================================================
-Workload                    Strategy      Time (ms)     Success / Fail  Search Steps    Frag (%)        Largest Free  
---------------------------------------------------------------------------------------------------------
-Fragmented Churn (400 ops)  First-Fit     0.000         359 / 41        56027           95.69           5 KiB         
-Fragmented Churn (400 ops)  Best-Fit      0.000         362 / 38        55608           91.67           4 KiB         
-Burst Alloc/Free Cycles     First-Fit     0.000         250 / 0         6375            0.00            2048 KiB      
-Burst Alloc/Free Cycles     Best-Fit      0.000         250 / 0         6375            0.00            2048 KiB      
-========================================================================================================
+============================================================
+ALLOCATOR STRATEGY ANALYSIS
+============================================================
+
+Workload: Fragmented Churn Pattern
+Requests: 400
+
+Metric                  First-Fit         Best-Fit          
+------------------------------------------------------------
+Successful allocations  359               362               
+Failed allocations      41                38                
+Search work (steps)     56027             55608             
+Total free              116 KiB           48 KiB            
+Largest free region     5 KiB             4 KiB             
+Fragmentation           95.69 %           91.67 %           
+Internal slack waste    120583 B          121585 B          
+Reuse events            118               121               
+------------------------------------------------------------
+Observed result:
+Best-Fit achieved higher allocation throughput (362/400 vs 359/400) and lower external fragmentation (91.7% vs 95.7%).
+
+Trade-off:
+Best-Fit tightly matches free block sizes, minimizing residue fragmentation and preserving larger contiguous runs. However, Best-Fit evaluates all candidate blocks in the list (search work: 55608 steps vs 56027 steps for First-Fit). Recommendation: Use Best-Fit for memory-constrained heterogeneous workloads where allocation success rate is critical.
+============================================================
 ```
 
 ---
@@ -184,4 +217,8 @@ AllocatorStats get_allocator_stats();
 void dump_leaks();
 void dump_pool_layout();
 std::vector<LeakInfo> get_active_leaks();
+
+// Tier-2 Strategy Advisor
+StrategyAdvisorReport run_strategy_advisor(const std::string& workload_type = "fragmented_churn");
+void print_strategy_advisor_report(const StrategyAdvisorReport& report);
 ```

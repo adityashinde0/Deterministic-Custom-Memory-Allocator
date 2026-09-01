@@ -236,6 +236,24 @@ void test_leak_detection() {
     TEST_ASSERT(no_leaks.empty(), "Zero leaks after freeing all blocks");
 }
 
+void test_strategy_advisor() {
+    std::cout << "\n=== Running: test_strategy_advisor (Tier-2) ===\n";
+    auto report = run_strategy_advisor("fragmented_churn");
+    TEST_ASSERT(report.total_requests == 400, "Advisor workload contains exactly 400 requests");
+    TEST_ASSERT(report.first_fit_metrics.successful_allocations + report.first_fit_metrics.failed_allocations == 400,
+                "First-Fit total accounted operations equals 400");
+    TEST_ASSERT(report.best_fit_metrics.successful_allocations + report.best_fit_metrics.failed_allocations == 400,
+                "Best-Fit total accounted operations equals 400");
+    TEST_ASSERT(!report.observed_result.empty(), "Observed result analysis is generated");
+    TEST_ASSERT(!report.tradeoff_analysis.empty(), "Trade-off explanation is generated");
+
+    // Test burst cycles workload
+    auto burst_report = run_strategy_advisor("burst_cycles");
+    TEST_ASSERT(burst_report.total_requests == 250, "Burst workload contains exactly 250 requests");
+    TEST_ASSERT(burst_report.first_fit_metrics.successful_allocations == 250, "First-Fit satisfies all 250 burst requests");
+    TEST_ASSERT(burst_report.best_fit_metrics.successful_allocations == 250, "Best-Fit satisfies all 250 burst requests");
+}
+
 int main() {
     std::cout << "=======================================================\n";
     std::cout << "       RUNNING CUSTOM ALLOCATOR TEST SUITE             \n";
@@ -249,6 +267,7 @@ int main() {
     test_pointer_validation_and_double_free();
     test_strategy_behavior();
     test_leak_detection();
+    test_strategy_advisor();
 
     std::cout << "\n=======================================================\n";
     std::cout << " TEST SUMMARY: " << g_pass_count << " PASSED, " << g_fail_count << " FAILED\n";

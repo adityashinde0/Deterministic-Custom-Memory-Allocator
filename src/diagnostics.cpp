@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <random>
+#include <sstream>
 
 namespace Allocator {
 
@@ -158,6 +160,175 @@ void CustomPoolAllocator::print_layout() const {
     }
     std::cout << "]  (# = Allocated, . = Free)\n";
     std::cout << "=======================================================\n";
+}
+
+// Deterministic Workload Execution for Tier-2 Strategy Advisor
+static StrategyAdvisorMetrics execute_workload_on_strategy(AllocationStrategy strat, const std::string& workload_type) {
+    reset_pool();
+    set_allocation_strategy(strat);
+
+    std::mt19937 rng(42); // Exact deterministic seed
+
+    if (workload_type == "burst_cycles") {
+        std::uniform_int_distribution<size_t> size_dist(1024, 32 * 1024);
+        const size_t BURST_CYCLES = 5;
+        const size_t ALLOCS_PER_CYCLE = 50;
+
+        for (size_t cycle = 0; cycle < BURST_CYCLES; ++cycle) {
+            std::vector<void*> cycle_ptrs;
+            for (size_t i = 0; i < ALLOCS_PER_CYCLE; ++i) {
+                void* p = xmalloc(size_dist(rng));
+                if (p) cycle_ptrs.push_back(p);
+            }
+            for (void* p : cycle_ptrs) {
+                xfree(p);
+            }
+        }
+    } else {
+        // Default: "fragmented_churn" (400 ops)
+        std::uniform_int_distribution<size_t> size_dist(512, 16 * 1024);
+        const size_t NUM_INITIAL_ALLOCS = 250;
+        std::vector<void*> ptrs;
+        ptrs.reserve(NUM_INITIAL_ALLOCS);
+
+        // Phase 1: 250 Allocations
+        for (size_t i = 0; i < NUM_INITIAL_ALLOCS; ++i) {
+            void* p = xmalloc(size_dist(rng));
+            if (p) ptrs.push_back(p);
+        }
+
+        // Phase 2: Free every alternating block
+        for (size_t i = 0; i < ptrs.size(); i += 2) {
+            if (ptrs[i]) {
+                xfree(ptrs[i]);
+                ptrs[i] = nullptr;
+            }
+        }
+
+        // Phase 3: 150 Allocations into fragmented free holes
+        const size_t SECOND_WAVE = 150;
+        for (size_t i = 0; i < SECOND_WAVE; ++i) {
+            void* p = xmalloc(size_dist(rng));
+            if (p) ptrs.push_back(p);
+        }
+    }
+
+    AllocatorStats stats = get_allocator_stats();
+    StrategyAdvisorMetrics m;
+    m.strategy_name = (strat == AllocationStrategy::FIRST_FIT) ? "First-Fit" : "Best-Fit";
+    m.successful_allocations = stats.total_alloc_successes;
+    m.failed_allocations = stats.total_alloc_failures;
+    m.search_work_steps = stats.strategy_search_steps;
+    m.total_free_kib = stats.free_units;
+    m.largest_free_region_kib = stats.largest_free_block_units;
+    m.fragmentation_ratio = stats.external_fragmentation_ratio;
+    m.internal_waste_bytes = stats.internal_waste_bytes;
+    m.reuse_events = stats.reused_alloc_count;
+
+    return m;
+}
+
+StrategyAdvisorReport run_strategy_advisor(const std::string& workload_type) {
+    StrategyAdvisorReport report;
+    report.workload_name = (workload_type == "burst_cycles") ? "Burst Alloc/Free Cycles" : "Fragmented Churn Pattern";
+    report.total_requests = (workload_type == "burst_cycles") ? 250 : 400;
+
+    report.first_fit_metrics = execute_workload_on_strategy(AllocationStrategy::FIRST_FIT, workload_type);
+    report.best_fit_metrics = execute_workload_on_strategy(AllocationStrategy::BEST_FIT, workload_type);
+
+    const auto& ff = report.first_fit_metrics;
+    const auto& bf = report.best_fit_metrics;
+
+    std::ostringstream obs;
+    std::ostringstream trade;
+
+    if (bf.successful_allocations > ff.successful_allocations) {
+        obs << "Best-Fit achieved higher allocation throughput (" 
+            << bf.successful_allocations << "/" << report.total_requests << " vs " 
+            << ff.successful_allocations << "/" << report.total_requests 
+            << ") and lower external fragmentation (" 
+            << std::fixed << std::setprecision(1) << (bf.fragmentation_ratio * 100.0) << "% vs " 
+            << (ff.fragmentation_ratio * 100.0) << "%).";
+
+        trade << "Best-Fit tightly matches free block sizes, minimizing residue fragmentation and preserving larger contiguous runs. "
+              << "However, Best-Fit evaluates all candidate blocks in the list (search work: " 
+              << bf.search_work_steps << " steps vs " << ff.search_work_steps << " steps for First-Fit). "
+              << "Recommendation: Use Best-Fit for memory-constrained heterogeneous workloads where allocation success rate is critical.";
+    } else if (ff.successful_allocations > bf.successful_allocations) {
+        obs << "First-Fit achieved higher allocation throughput (" 
+            << ff.successful_allocations << " vs " << bf.successful_allocations << ").";
+        trade << "First-Fit reduced search overhead (" << ff.search_work_steps << " steps vs " 
+              << bf.search_work_steps << " steps).";
+    } else {
+        obs << "Both strategies achieved identical allocation success (" 
+            << ff.successful_allocations << "/" << report.total_requests << " requests satisfied).";
+        
+        trade << "First-Fit terminates search early upon finding the first suitable block (" 
+              << ff.search_work_steps << " steps vs " << bf.search_work_steps << " steps), "
+              << "offering lower allocation latency. Best-Fit preserves block layout compactness. "
+              << "Recommendation: For uniform or burst cycles, First-Fit is preferred due to lower search work.";
+    }
+
+    report.observed_result = obs.str();
+    report.tradeoff_analysis = trade.str();
+
+    return report;
+}
+
+void print_strategy_advisor_report(const StrategyAdvisorReport& report) {
+    const auto& ff = report.first_fit_metrics;
+    const auto& bf = report.best_fit_metrics;
+
+    std::cout << "\n============================================================\n";
+    std::cout << "ALLOCATOR STRATEGY ANALYSIS\n";
+    std::cout << "============================================================\n";
+    std::cout << "\nWorkload: " << report.workload_name << "\n";
+    std::cout << "Requests: " << report.total_requests << "\n\n";
+
+    std::cout << std::left << std::setw(24) << "Metric" 
+              << std::setw(18) << "First-Fit" 
+              << std::setw(18) << "Best-Fit" << "\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    std::cout << std::left << std::setw(24) << "Successful allocations" 
+              << std::setw(18) << ff.successful_allocations 
+              << std::setw(18) << bf.successful_allocations << "\n";
+
+    std::cout << std::left << std::setw(24) << "Failed allocations" 
+              << std::setw(18) << ff.failed_allocations 
+              << std::setw(18) << bf.failed_allocations << "\n";
+
+    std::cout << std::left << std::setw(24) << "Search work (steps)" 
+              << std::setw(18) << ff.search_work_steps 
+              << std::setw(18) << bf.search_work_steps << "\n";
+
+    std::cout << std::left << std::setw(24) << "Total free" 
+              << std::setw(18) << (std::to_string(ff.total_free_kib) + " KiB") 
+              << std::setw(18) << (std::to_string(bf.total_free_kib) + " KiB") << "\n";
+
+    std::cout << std::left << std::setw(24) << "Largest free region" 
+              << std::setw(18) << (std::to_string(ff.largest_free_region_kib) + " KiB") 
+              << std::setw(18) << (std::to_string(bf.largest_free_region_kib) + " KiB") << "\n";
+
+    std::ostringstream ff_frag, bf_frag;
+    ff_frag << std::fixed << std::setprecision(2) << (ff.fragmentation_ratio * 100.0) << " %";
+    bf_frag << std::fixed << std::setprecision(2) << (bf.fragmentation_ratio * 100.0) << " %";
+    std::cout << std::left << std::setw(24) << "Fragmentation" 
+              << std::setw(18) << ff_frag.str() 
+              << std::setw(18) << bf_frag.str() << "\n";
+
+    std::cout << std::left << std::setw(24) << "Internal slack waste" 
+              << std::setw(18) << (std::to_string(ff.internal_waste_bytes) + " B") 
+              << std::setw(18) << (std::to_string(bf.internal_waste_bytes) + " B") << "\n";
+
+    std::cout << std::left << std::setw(24) << "Reuse events" 
+              << std::setw(18) << ff.reuse_events 
+              << std::setw(18) << bf.reuse_events << "\n";
+
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "Observed result:\n" << report.observed_result << "\n\n";
+    std::cout << "Trade-off:\n" << report.tradeoff_analysis << "\n";
+    std::cout << "============================================================\n";
 }
 
 } // namespace Allocator

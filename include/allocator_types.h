@@ -60,6 +60,28 @@ struct LeakInfo {
     void* pool_address;
 };
 
+// Tier-2 Strategy Advisor Structs
+struct StrategyAdvisorMetrics {
+    std::string strategy_name;
+    size_t successful_allocations;
+    size_t failed_allocations;
+    size_t search_work_steps;
+    size_t total_free_kib;
+    size_t largest_free_region_kib;
+    double fragmentation_ratio;
+    size_t internal_waste_bytes;
+    size_t reuse_events;
+};
+
+struct StrategyAdvisorReport {
+    std::string workload_name;
+    size_t total_requests;
+    StrategyAdvisorMetrics first_fit_metrics;
+    StrategyAdvisorMetrics best_fit_metrics;
+    std::string observed_result;
+    std::string tradeoff_analysis;
+};
+
 } // namespace Allocator
 
 #endif // ALLOCATOR_TYPES_H

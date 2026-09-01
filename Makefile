@@ -1,4 +1,4 @@
-CXX = g++
+CXX ?= g++
 CXXFLAGS = -std=c++14 -O2 -Wall -Wextra -Iinclude
 
 SRCS = src/allocator.cpp src/strategy.cpp src/diagnostics.cpp
@@ -7,15 +7,25 @@ OBJS = obj/allocator.o obj/strategy.o obj/diagnostics.o
 BIN_DIR = bin
 OBJ_DIR = obj
 
-TARGET_CLI = $(BIN_DIR)/allocator_cli.exe
-TARGET_TEST = $(BIN_DIR)/test_runner.exe
-TARGET_BENCH = $(BIN_DIR)/benchmark_runner.exe
+ifeq ($(OS),Windows_NT)
+    EXE = .exe
+    MKDIR = if not exist $(1) mkdir $(1)
+    RMDIR = if exist $(1) rmdir /s /q $(1)
+else
+    EXE =
+    MKDIR = mkdir -p $(1)
+    RMDIR = rm -rf $(1)
+endif
+
+TARGET_CLI = $(BIN_DIR)/demo_runner$(EXE)
+TARGET_TEST = $(BIN_DIR)/test_runner$(EXE)
+TARGET_BENCH = $(BIN_DIR)/benchmark_runner$(EXE)
 
 all: dirs $(TARGET_CLI) $(TARGET_TEST) $(TARGET_BENCH)
 
 dirs:
-	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
-	@if not exist $(OBJ_DIR) mkdir $(OBJ_DIR)
+	@$(call MKDIR,$(BIN_DIR))
+	@$(call MKDIR,$(OBJ_DIR))
 
 $(OBJ_DIR)/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -48,7 +58,7 @@ bench: dirs $(TARGET_BENCH)
 	$(TARGET_BENCH)
 
 clean:
-	@if exist $(OBJ_DIR) rmdir /s /q $(OBJ_DIR)
-	@if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
+	@$(call RMDIR,$(OBJ_DIR))
+	@$(call RMDIR,$(BIN_DIR))
 
 .PHONY: all dirs cli test bench clean
