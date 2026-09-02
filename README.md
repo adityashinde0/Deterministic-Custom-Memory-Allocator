@@ -1,6 +1,6 @@
 # C-002: Deterministic Custom Memory Allocator
 
-A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, a **Tier-2 Deterministic Allocation Strategy Advisor**, and an interactive/demonstration CLI harness.
+A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logically partitioned into **2048 × 1 KiB** contiguous allocation units. Built with configurable allocation strategies (**First-Fit** and **Best-Fit**), bidirectional free-block coalescing, memory leak detection, detailed fragmentation diagnostics, a **Tier-2 Deterministic Allocation Strategy Advisor**, a **Real-World Embedded Controller Workload Simulator**, and an interactive/demonstration CLI harness.
 
 ---
 
@@ -12,10 +12,13 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
 - **Configurable Search Strategies**:
   - **First-Fit**: Scans from the beginning of the pool to find the first suitable contiguous block (lowest search overhead).
   - **Best-Fit**: Evaluates candidate free blocks to find the closest matching block size, minimizing remaining fragment slack.
-- **Tier-2 WOW Feature: Deterministic Allocation Strategy Advisor**:
+- **Tier-2 Feature: Deterministic Allocation Strategy Advisor**:
   - Runs identical deterministic workloads across First-Fit and Best-Fit strategies.
   - Measures allocation success rate, search work (block evaluations), fragmentation ratios, internal slack waste, and reuse events.
   - Outputs an evidence-based trade-off comparison and recommendation without heuristics or fake AI.
+- **Real-World Embedded Workload Simulation**:
+  - Models realistic memory consumers: Sensor Data Buffer (12 KiB), Communication RX (32 KiB), Control Task (8 KiB), Event Buffer (6 KiB), and Temporary Processing Buffer (20 KiB).
+  - Features a **Deterministic Memory Pressure Indicator** (`LOW`, `MODERATE`, `HIGH`, `CRITICAL`) and live terminal Resource Dashboard.
 - **Splitting & Coalescing**:
   - **Block Splitting**: Partitions excess units from oversized free blocks into new free descriptor records.
   - **Bidirectional Coalescing**: Automatically merges adjacent free blocks (left and right) upon deallocation to eliminate external fragmentation.
@@ -29,8 +32,8 @@ A deterministic C++ custom memory allocator managing a fixed **2 MiB** pool logi
   - Computes internal slack waste (bytes) and external fragmentation indicator.
   - Generates live memory leak reports with block ID, requested vs reserved bytes, and address offsets.
   - ASCII visual memory bar representing real-time pool occupancy.
-- **Cross-Platform / Linux-Ready Build**: Dual-OS POSIX & Windows compliant Makefile.
-- **Automated Test Suite & Benchmarks**: 55 automated unit tests covering all edge cases, plus comparative benchmark runners.
+- **Cross-Platform Build**: Platform-segregated POSIX (Linux/macOS) & Windows (MinGW) Makefile.
+- **Automated Test Suite & Benchmarks**: 65 automated unit tests covering all edge cases, plus comparative benchmark runners.
 
 ---
 
@@ -74,24 +77,26 @@ flowchart TD
 ```text
 PS-C-002/
 ├── include/
-│   ├── allocator.h          # Public API, CustomPoolAllocator, and Advisor declarations
-│   ├── allocator_types.h    # Data structures, constants, stats, Advisor types, and leak definitions
-│   └── strategy.h           # IAllocationStrategy, FirstFitStrategy, and BestFitStrategy
+│   ├── allocator.h            # Public API, CustomPoolAllocator, and Advisor declarations
+│   ├── allocator_types.h      # Data structures, constants, stats, Advisor types, and leak definitions
+│   ├── embedded_simulator.h   # Embedded controller component simulation & pressure metrics
+│   └── strategy.h             # IAllocationStrategy, FirstFitStrategy, and BestFitStrategy
 ├── src/
-│   ├── allocator.cpp        # Pool memory management, xmalloc/xfree, splitting, coalescing
-│   ├── strategy.cpp         # First-Fit and Best-Fit search implementations
-│   ├── diagnostics.cpp      # Layout mapping, stats computation, leak reporting, and Strategy Advisor
-│   └── main.cpp             # 10-step sequential demo suite and interactive console
+│   ├── allocator.cpp          # Pool memory management, xmalloc/xfree, splitting, coalescing
+│   ├── strategy.cpp           # First-Fit and Best-Fit search implementations
+│   ├── diagnostics.cpp        # Layout mapping, stats computation, leak reporting, and Strategy Advisor
+│   ├── embedded_simulator.cpp # Real-world embedded controller workload simulation & dashboard
+│   └── main.cpp               # Demo runner, CLI harness, and interactive console
 ├── tests/
-│   └── test_allocator.cpp   # 55-test automated unit and regression suite
+│   └── test_allocator.cpp     # 65-test automated unit and regression suite
 ├── benchmarks/
-│   └── benchmark.cpp        # Reproducible First-Fit vs Best-Fit benchmark harness
-├── ARCHITECTURE.md          # Technical baseline architecture specification
-├── PRD.md                   # Product requirements document
-├── PROGRESS.md              # Task execution tracking and decisions log
-├── Makefile                 # Cross-platform (Linux & Windows) build definitions
-├── .gitignore               # Git ignore rules
-└── README.md                # Project documentation
+│   └── benchmark.cpp          # Reproducible First-Fit vs Best-Fit benchmark harness
+├── ARCHITECTURE.md            # Technical baseline architecture specification
+├── PRD.md                     # Product requirements document
+├── PROGRESS.md                # Task execution tracking and decisions log
+├── Makefile                   # Cross-platform (Linux & Windows) build definitions
+├── .gitignore                 # Git ignore rules
+└── README.md                  # Project documentation
 ```
 
 ---
@@ -109,13 +114,13 @@ make all        # Linux / macOS
 mingw32-make all # Windows
 ```
 
-### Run Automated Unit Tests (55 Tests)
+### Run Automated Unit Tests (65 Tests)
 ```bash
 make test        # Linux / macOS
 # or
 mingw32-make test # Windows
 ```
-*Executes all 55 unit test assertions covering initialization, unit rounding, splitting, coalescing, reuse, exhaustion, invalid pointer checks, double free detection, strategy variations, leak reports, and Tier-2 Strategy Advisor validation.*
+*Executes all 65 unit test assertions covering initialization, unit rounding, splitting, coalescing, reuse, exhaustion, invalid pointer checks, double free detection, strategy variations, leak reports, Strategy Advisor validation, and the embedded simulator lifecycle.*
 
 ### Run Strategy Comparison Benchmarks
 ```bash
@@ -127,9 +132,9 @@ mingw32-make bench # Windows
 
 ### Run Tier-2 Strategy Advisor Report
 ```bash
-./bin/demo_runner --advisor        # Linux / macOS
+./bin/linux/demo_runner --advisor        # Linux / macOS
 # or
-bin\demo_runner.exe --advisor      # Windows
+bin\win\demo_runner.exe --advisor        # Windows
 ```
 
 ### Run Full 10-Step Deterministic Demo
@@ -159,9 +164,9 @@ mingw32-make embedded-comp # Windows
 
 ### Run Interactive Console
 ```bash
-./bin/demo_runner --interactive    # Linux / macOS
+make cli -- -i            # or ./bin/linux/demo_runner --interactive
 # or
-bin\demo_runner.exe --interactive  # Windows
+mingw32-make cli -- -i   # or bin\win\demo_runner.exe --interactive
 ```
 
 ---
@@ -176,6 +181,8 @@ When running in `--interactive` mode, the allocator provides an interactive comm
 | `free <handle_id>` | Free an allocated block by its handle ID | `free 1` |
 | `strategy <ff\|bf>` | Switch active strategy (`ff` = First-Fit, `bf` = Best-Fit) | `strategy bf` |
 | `advisor [churn\|burst]` | Run Tier-2 Deterministic Strategy Advisor | `advisor churn` |
+| `embedded` / `sim` | Run the Real-World Embedded Controller simulation | `embedded` |
+| `comp` | Run Embedded Workload Strategy Comparison | `comp` |
 | `layout` | Display visual ASCII layout map and block descriptors | `layout` |
 | `stats` | Print comprehensive allocator statistics | `stats` |
 | `leaks` | Run live memory leak detection report | `leaks` |
@@ -183,6 +190,34 @@ When running in `--interactive` mode, the allocator provides an interactive comm
 | `reset` | Reset pool to clean initial state | `reset` |
 | `demo` | Run the full 10-step automated demo | `demo` |
 | `exit` / `quit` | Exit the interactive console | `exit` |
+
+---
+
+## 📊 Embedded System Memory Monitor Output Example
+
+```text
+============================================================
+             EMBEDDED SYSTEM MEMORY MONITOR                 
+============================================================
+ System State:    HIGH_PRESSURE_STATE      Memory Pressure: CRITICAL
+
+Component                 Requested       Reserved        Status      
+------------------------------------------------------------
+Temporary Processing      20 KiB          20 KiB          ACTIVE      
+High-Res Camera Stream    600 KiB         600 KiB         ACTIVE      
+FFT Audio Spectrum Block  800 KiB         800 KiB         ACTIVE      
+Firmware Update Buffer    400 KiB         400 KiB         ACTIVE      
+------------------------------------------------------------
+ Pool Capacity:       2048 KiB (2 MiB)
+ Allocated:           1820 KiB
+ Free:                228 KiB
+ Largest Contiguous:  170 KiB
+ Fragmentation:       25.44 %
+ Internal Slack:      0 B
+ Allocation Failures: 0
+ Reuse Events:        8
+============================================================
+```
 
 ---
 
